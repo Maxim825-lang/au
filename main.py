@@ -1,14 +1,17 @@
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import BOT_TOKEN, validate_config, LOGS_DIR, TELETHON_API_ID, TELETHON_API_HASH
+from config import (
+    BOT_TOKEN, validate_config, LOGS_DIR,
+    TELETHON_API_ID, TELETHON_API_HASH,
+    WEBHOOK_URL, WEBHOOK_PATH, WEB_SERVER_HOST, WEB_SERVER_PORT,
+)
 from database import init_db
 from bot.handlers import router
 from bot.digest_handlers import digest_router
@@ -44,7 +47,13 @@ async def on_startup(bot: Bot):
             "Telethon не настроен — выжимка работает через t.me/s (только публичные каналы)"
         )
 
-    logging.getLogger(__name__).info("Бот запущен")
+    if WEBHOOK_URL:
+        webhook_full = WEBHOOK_URL.rstrip("/") + WEBHOOK_PATH
+        await bot.set_webhook(webhook_full)
+        logging.getLogger(__name__).info("Webhook set: %s", webhook_full)
+        logging.getLogger(__name__).info("Webhook bot started")
+    else:
+        logging.getLogger(__name__).info("Бот запущен (polling)")
 
 
 async def on_shutdown(bot: Bot):
@@ -54,6 +63,9 @@ async def on_shutdown(bot: Bot):
 
     from services.reader import stop_reader
     await stop_reader()
+
+    if WEBHOOK_URL:
+        await bot.delete_webhook()
 
     logging.getLogger(__name__).info("Бот остановлен")
 
@@ -79,8 +91,33 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
-    logger.info("Starting polling...")
-    await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
+    if WEBHOOK_URL:
+        from aiohttp import web
+        from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+        app = web.Application()
+
+        async def health_handler(request):
+            return web.Response(text="OK")
+
+        app.router.add_get("/health", health_handler)
+
+        SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
+        setup_application(app, dp, bot=bot)
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, WEB_SERVER_HOST, WEB_SERVER_PORT)
+        await site.start()
+        logger.info("Web server started on %s:%s", WEB_SERVER_HOST, WEB_SERVER_PORT)
+
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await runner.cleanup()
+    else:
+        logger.info("Starting polling...")
+        await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
 
 
 if __name__ == "__main__":

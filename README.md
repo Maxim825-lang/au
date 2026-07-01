@@ -6,7 +6,7 @@
 
 ---
 
-## Быстрый старт
+## Быстрый старт (локально, polling)
 
 ```bash
 # 1. Установи зависимости
@@ -21,8 +21,29 @@ cp .env.example .env
 python main.py
 ```
 
+Оставь `WEBHOOK_URL` пустым — бот запустится в polling-режиме.  
 Для работы выжимки достаточно заполнить `BOT_TOKEN`, `ADMIN_ID`, `CHANNEL_ID` и `OPENAI_API_KEY`.  
 Telethon — необязателен (см. ниже).
+
+---
+
+## Деплой на Render (бесплатный Web Service, webhook)
+
+1. Создай новый сервис: **Render → New → Web Service**.
+2. Укажи репозиторий и выбери ветку.
+3. Заполни параметры сборки:
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python main.py`
+4. В разделе **Environment** добавь переменные окружения (см. `.env.example`):
+   - Обязательные: `BOT_TOKEN`, `ADMIN_ID`, `CHANNEL_ID`
+   - `WEBHOOK_URL` — URL твоего сервиса, например `https://my-bot.onrender.com`
+   - `WEBHOOK_PATH=/webhook`
+   - `WEB_SERVER_HOST=0.0.0.0`
+   - `WEB_SERVER_PORT=10000`
+5. Сохрани и задеплой. Render автоматически выставит порт из `WEB_SERVER_PORT`.
+
+После старта бот сам зарегистрирует webhook в Telegram и начнёт принимать updates через POST `/webhook`.  
+Health-check доступен на GET `/health` (отвечает `OK`).
 
 ---
 

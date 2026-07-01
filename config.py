@@ -33,6 +33,12 @@ OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 DIGEST_HOURS: int = int(os.getenv("DIGEST_HOURS", "24"))
 DIGEST_MAX_POSTS: int = int(os.getenv("DIGEST_MAX_POSTS", "20"))
 
+# Webhook (Render / production). Если пусто — запускается polling.
+WEBHOOK_URL: str = os.getenv("WEBHOOK_URL", "")
+WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", "/webhook")
+WEB_SERVER_HOST: str = os.getenv("WEB_SERVER_HOST", "0.0.0.0")
+WEB_SERVER_PORT: int = int(os.getenv("WEB_SERVER_PORT", "10000"))
+
 
 def validate_config() -> list[str]:
     errors = []
