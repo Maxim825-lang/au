@@ -100,6 +100,7 @@ async def main():
         async def health_handler(request):
             return web.Response(text="OK")
 
+        app.router.add_get("/", health_handler)
         app.router.add_get("/health", health_handler)
 
         SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
