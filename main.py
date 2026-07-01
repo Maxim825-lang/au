@@ -96,15 +96,15 @@ async def main():
 
     app = web.Application()
 
+    async def root_handler(request):
+        return web.Response(text="OK", status=200)
+
     async def health_handler(request):
-        return web.Response(text="OK")
+        return web.Response(text="OK", status=200)
 
-    async def webhook_get_handler(request):
-        return web.Response(text="Webhook endpoint. Use POST.")
-
-    app.router.add_get("/", health_handler)
+    app.router.add_get("/", root_handler)
     app.router.add_get("/health", health_handler)
-    app.router.add_get(WEBHOOK_PATH, webhook_get_handler)
+    app.router.add_get("/webhook", lambda request: web.Response(text="Webhook endpoint. Use POST.", status=200))
 
     if WEBHOOK_URL:
         SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
@@ -115,6 +115,9 @@ async def main():
     site = web.TCPSite(runner, WEB_SERVER_HOST, WEB_SERVER_PORT)
     await site.start()
     logger.info("Web server started on %s:%s", WEB_SERVER_HOST, WEB_SERVER_PORT)
+    logger.info("Registered routes:")
+    for resource in app.router.resources():
+        logger.info("  %s", resource)
 
     try:
         if WEBHOOK_URL:
