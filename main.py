@@ -96,15 +96,12 @@ async def main():
 
     app = web.Application()
 
-    async def root_handler(request):
+    async def catchall_get_handler(request):
+        logger.info("GET %s", request.path)
         return web.Response(text="OK", status=200)
 
-    async def health_handler(request):
-        return web.Response(text="OK", status=200)
-
-    app.router.add_get("/", root_handler)
-    app.router.add_get("/health", health_handler)
-    app.router.add_get("/webhook", lambda request: web.Response(text="Webhook endpoint. Use POST.", status=200))
+    app.router.add_get("/", catchall_get_handler)
+    app.router.add_get("/{tail:.*}", catchall_get_handler)
 
     if WEBHOOK_URL:
         SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
