@@ -91,34 +91,40 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
+    from aiohttp import web
+    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+    app = web.Application()
+
+    async def health_handler(request):
+        return web.Response(text="OK")
+
+    async def webhook_get_handler(request):
+        return web.Response(text="Webhook endpoint. Use POST.")
+
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+    app.router.add_get(WEBHOOK_PATH, webhook_get_handler)
+
     if WEBHOOK_URL:
-        from aiohttp import web
-        from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-
-        app = web.Application()
-
-        async def health_handler(request):
-            return web.Response(text="OK")
-
-        app.router.add_get("/", health_handler)
-        app.router.add_get("/health", health_handler)
-
         SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
         setup_application(app, dp, bot=bot)
 
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, WEB_SERVER_HOST, WEB_SERVER_PORT)
-        await site.start()
-        logger.info("Web server started on %s:%s", WEB_SERVER_HOST, WEB_SERVER_PORT)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, WEB_SERVER_HOST, WEB_SERVER_PORT)
+    await site.start()
+    logger.info("Web server started on %s:%s", WEB_SERVER_HOST, WEB_SERVER_PORT)
 
-        try:
+    try:
+        if WEBHOOK_URL:
+            logger.info("Running in webhook mode")
             await asyncio.Event().wait()
-        finally:
-            await runner.cleanup()
-    else:
-        logger.info("Starting polling...")
-        await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
+        else:
+            logger.info("Starting polling...")
+            await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
+    finally:
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
