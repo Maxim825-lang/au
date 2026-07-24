@@ -96,6 +96,11 @@ async def main():
 
     app = web.Application()
 
+    async def health(request):
+        return web.Response(text="OK")
+
+    app.router.add_get("/health", health)
+
     async def catchall_get_handler(request):
         logger.info("GET %s", request.path)
         return web.Response(text="OK", status=200)
